@@ -1,21 +1,21 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_REGISTRY = 'https://registry.hub.docker.com' // Replace with your registry
+        DOCKER_REGISTRY = 'dhanushkapalasa'
         DOCKER_CREDENTIALS_ID = 'docker-jenkins'
-        KUBECONFIG_CREDENTIALS_ID = 'kubeconfig'
         BACKEND_IMAGE = "${DOCKER_REGISTRY}/news-app-backend:${BUILD_NUMBER}"
         FRONTEND_IMAGE = "${DOCKER_REGISTRY}/news-app-frontend:${BUILD_NUMBER}"
     }
-    
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-        
+
         stage('Build Backend') {
             steps {
                 dir('backend') {
@@ -23,8 +23,7 @@ pipeline {
                 }
             }
         }
-        
-        
+
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
@@ -33,44 +32,40 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Docker Images') {
             steps {
                 script {
-                    // Build Backend Image
                     docker.build(BACKEND_IMAGE, '-f SpringStarterProject/Dockerfile ./SpringStarterProject')
-                    
-                    // Build Frontend Image
                     docker.build(FRONTEND_IMAGE, '-f news-app/Dockerfile ./news-app')
                 }
             }
         }
-        
-        stage('Pubat Docker Images') {
+
+        stage('Push Docker Images') {
             steps {
                 script {
-                    docker.withRegistry('https://' + DOCKER_REGISTRY, DOCKER_CREDENTIALS_ID) {
-                        docker.image(BACKEND_IMAGE).pubat()
-                        docker.image(FRONTEND_IMAGE).pubat()
+                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_CREDENTIALS_ID) {
+                        docker.image(BACKEND_IMAGE).push()
+                        docker.image(FRONTEND_IMAGE).push()
                     }
                 }
             }
         }
-        
-        stage('Deploy to Kubernetes') {
+
+        stage('Deploy with docker-compose') {
             steps {
-                withCredentials([file(credentialsId: KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG')]) {
+                script {
                     bat '''
-                        kubectl apply -f k8s/namespace.yaml
-                        kubectl apply -f k8s/ -n news-app
-                        
-                        # Update images in deployment
-                        kubectl set image deployment/backend-deployment news-app-backend=${BACKEND_IMAGE} -n news-app
-                        kubectl set image deployment/frontend-deployment news-app-frontend=${FRONTEND_IMAGE} -n news-app
-                        
-                        # Wait for rollout to complete
-                        kubectl rollout status deployment/backend-deployment -n news-app --timeout=300s
-                        kubectl rollout status deployment/frontend-deployment -n news-app --timeout=300s
+                        echo Updating docker-compose images...
+
+                        docker pull %BACKEND_IMAGE%
+                        docker pull %FRONTEND_IMAGE%
+
+                        docker-compose -f docker-compose.yml down
+                        docker-compose -f docker-compose.yml up -d
+
+                        echo Deployment Completed Successfully!
                     '''
                 }
             }

@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  backend:
+    image: dhanushkapalasa/news-app-backend:latest
+    container_name: news-backend
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    restart: always
+
+  frontend:
+    image: dhanushkapalasa/news-app-frontend:latest
+    container_name: news-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
