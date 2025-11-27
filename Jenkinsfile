@@ -18,15 +18,15 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                dir('backend') {
-                    bat './mvnw clean package -DskipTests'
+                dir('SpringStarterProject') {
+                    bat 'mvnw.cmd clean package -DskipTests'
                 }
             }
         }
 
         stage('Build Frontend') {
             steps {
-                dir('frontend') {
+                dir('news-app') {
                     bat 'npm ci'
                     bat 'npm run build'
                 }
